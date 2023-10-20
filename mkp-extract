@@ -1,0 +1,19 @@
+#!/bin/sh
+
+mkp_extract() {
+    f="$1"
+
+    wd=$(mktemp -d "mkp.XXXXXX")
+    tar -C $wd -xf "$f"
+
+    cd $wd
+    for tb in *.tar; do
+	mkdir -p "${tb%%.tar}" && tar -C "${tb%%.tar}" -xf "$tb" && rm "$tb"
+    done
+
+    mv * ..
+    cd ..
+    rmdir $wd
+}
+
+mkp_extract "$1"

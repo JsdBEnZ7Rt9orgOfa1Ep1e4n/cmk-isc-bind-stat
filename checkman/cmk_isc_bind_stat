@@ -1,0 +1,26 @@
+title: CMK ISC Bind statatistics
+agents: linux
+catalog: os/services
+author: Vaclav Ovsik
+license: GPL
+distribution: none
+description:
+ Monitor the statistics data from ISC Bind daemon (named).
+ You need to enable BIND 9 HTTP statistics channel
+ (see {https://kb.isc.org/docs/monitoring-recommendations-for-bind-9} for more information)
+ 
+ { statistics-channels { inet 127.0.0.1 port 8080 ; }; }
+
+ Install CheckMK agent plugin /usr/lib/check_mk_agent/plugins/isc_bind_stats.py.
+ You can define regex patterns for statistics variable names you want to inventorize.
+ Everything is inventorized simply as a request counter. Levels for a request rate can
+ be defined. The default level is 1000 r/s for {WARN} and 2000 r/s for {CRIT}.
+ This can inform you about DDoS on DNS.
+
+item:
+ The statistic variable.
+
+inventory:
+ One service is created for every statistic variable whose name matches
+ according to discovery rule (list of names or regexes starting with ~).
+ By default only the variable "nsstats.Requestv4" is inventorized.
