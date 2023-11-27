@@ -59,38 +59,37 @@ def discovery_stat(
                 return True
         return False
 
-    # defaults are always last and empty to apeace the new api
-    for var in section:
+    selected = []
+    for k in section:
         for settings in params:
             names = settings.get("names", [])
-            if regex_match(names, var):
-                yield Service(item=var)
+            if regex_match(names, k):
+                selected.append(k)
+    if selected:
+        yield Service(parameters={"names": selected})
 
 
-def check_stat(item: str, params: Mapping[str, Any], section: Section) -> CheckResult:
-    if item not in section:
-        yield Result(state=State.UNKNOWN, summary="variable not found")
-        return
+def check_stat(params: Mapping[str, Any], section: Section) -> CheckResult:
     store = get_value_store()
     if 'boot-time' not in store or store['boot-time'] != section['boot-time']:
         store.clear()
         store['boot-time'] = section['boot-time']
-    val = section[item]
-    if val is not None:
+    
+    for k in params.get("names"):
+        v = section.get(k)
         try:
-            val_int = int(val)
+            v_int = int(v)
         except:
-            yield Result(state=State.OK, summary=f"{val}")
-            return
-        rate = get_rate(store, item, time.time(), val_int)
-        yield from check_levels(
-            int(rate),
-            levels_upper=params.get("levels"),
-            metric_name=item,
-            render_func=str,
-            label=item,
-        )
-
+            yield Result(state=State.OK, summary=f"{v}")
+        else:
+            rate = get_rate(store, k, time.time(), v_int)
+            yield from check_levels(
+                rate,
+                levels_upper=params.get("levels"),
+                metric_name=k,
+                render_func=str,
+                label=k,
+            )
 
 
 _DEFAULT_LEVELS = (1000, 2000)
@@ -103,7 +102,7 @@ _DEFAULT_DISCOVERY_PARAMETERS = {
 register.check_plugin(
     name="isc_bind_stats",
     sections=["isc_bind_stats"],
-    service_name="ISC Bind %s rate",
+    service_name="ISC Bind rate",
     check_ruleset_name="isc_bind_stats",
     discovery_function=discovery_stat,
     discovery_default_parameters=_DEFAULT_DISCOVERY_PARAMETERS,

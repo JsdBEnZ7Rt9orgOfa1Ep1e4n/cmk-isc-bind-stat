@@ -22,9 +22,11 @@ def _valuespec_isc_bind_stat_inventory() -> Dictionary:
                 "names",
                 ListOfStrings(
                     title=_("Name of Statistic variables"),
+                    default_value=["nsstats.Requestv4"],
                 ),
             ),
         ],
+        required_keys=["names"],
     )
 
 
@@ -60,6 +62,7 @@ def _parameter_valuespec_stats() -> Dictionary:
                 ),
             ),
         ],
+        required_keys=["levels"],
     )
 
 
