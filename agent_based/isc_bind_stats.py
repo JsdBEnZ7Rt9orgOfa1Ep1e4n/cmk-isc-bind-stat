@@ -39,44 +39,29 @@ def parse(string_table: StringTable) -> Optional[Section]:
             sections[section].append(line)
     return dict(iter(sections["server"]))
 
-
 register.agent_section(name="isc_bind_stats", parse_function=parse)
 
 
-def discovery_stat(
-    params: Sequence[Mapping[str, Any]], section: Section
-) -> DiscoveryResult:
+VARNAME=(
+    "nsstats.Requestv4",
+    "nsstats.Requestv6",
+)
 
-    def regex_match(what: Sequence[str], name: str) -> bool:
-        if not what:
-            return True
-        for entry in what:
-            if entry.startswith("~"):
-                if regex(entry[1:]).match(name):
-                    return True
-                continue
-            if entry == name:
-                return True
-        return False
-
-    selected = []
-    for k in section:
-        for settings in params:
-            names = settings.get("names", [])
-            if regex_match(names, k):
-                selected.append(k)
-    if selected:
-        yield Service(parameters={"names": selected})
-
+def discovery_stat(section: Section) -> DiscoveryResult:
+    for k in VARNAME:
+        if k in section:
+            yield Service()
+            return
 
 def check_stat(params: Mapping[str, Any], section: Section) -> CheckResult:
     store = get_value_store()
     if 'boot-time' not in store or store['boot-time'] != section['boot-time']:
         store.clear()
         store['boot-time'] = section['boot-time']
-    
-    for k in params.get("names"):
-        v = section.get(k)
+    for k in VARNAME:
+        if k not in section:
+            continue
+        v = section[k]
         try:
             v_int = int(v)
         except:
@@ -85,19 +70,13 @@ def check_stat(params: Mapping[str, Any], section: Section) -> CheckResult:
             rate = get_rate(store, k, time.time(), v_int)
             yield from check_levels(
                 rate,
-                levels_upper=params.get("levels"),
+                levels_upper=params.get("levels_"+k),
                 metric_name=k,
-                render_func=str,
+                render_func=lambda v: f"{v:.1f}/s",
                 label=k,
             )
 
-
-_DEFAULT_LEVELS = (1000, 2000)
-_DEFAULT_DISCOVERY_PARAMETERS = {
-        "names": [
-            "nsstats.Requestv4",
-            ]
-        }
+_DEFAULT_LEVELS = (100000, 200000)
 
 register.check_plugin(
     name="isc_bind_stats",
@@ -105,11 +84,9 @@ register.check_plugin(
     service_name="ISC Bind rate",
     check_ruleset_name="isc_bind_stats",
     discovery_function=discovery_stat,
-    discovery_default_parameters=_DEFAULT_DISCOVERY_PARAMETERS,
-    discovery_ruleset_name="isc_bind_stat_inventory",
-    discovery_ruleset_type=register.RuleSetType.ALL,
     check_function=check_stat,
     check_default_parameters={
-            "levels": _DEFAULT_LEVELS,
+            "levels_nsstats.Requestv4": _DEFAULT_LEVELS,
+            "levels_nsstats.Requestv6": _DEFAULT_LEVELS,
         },
 )

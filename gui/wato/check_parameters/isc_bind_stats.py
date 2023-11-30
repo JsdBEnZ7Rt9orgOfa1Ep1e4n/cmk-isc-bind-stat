@@ -5,72 +5,42 @@
 
 from cmk.gui.i18n import _
 from cmk.gui.plugins.wato.utils import (
-    CheckParameterRulespecWithItem,
-    HostRulespec,
+    CheckParameterRulespecWithoutItem,
+    Levels,
     rulespec_registry,
     RulespecGroupCheckParametersApplications,
-    RulespecGroupCheckParametersDiscovery,
 )
-from cmk.gui.valuespec import Dictionary, Integer, ListOfStrings, TextInput, Tuple
-
-
-def _valuespec_isc_bind_stat_inventory() -> Dictionary:
-    return Dictionary(
-        title=_("ISC Bind Statistics Names"),
-        elements=[
-            (
-                "names",
-                ListOfStrings(
-                    title=_("Name of Statistic variables"),
-                    default_value=["nsstats.Requestv4"],
-                ),
-            ),
-        ],
-        required_keys=["names"],
-    )
-
-
-rulespec_registry.register(
-    HostRulespec(
-        group=RulespecGroupCheckParametersDiscovery,
-        match_type="dict",
-        name="isc_bind_stat_inventory",
-        valuespec=_valuespec_isc_bind_stat_inventory,
-    )
-)
-
-
-def _item_spec_stats():
-    return TextInput(
-        title=_("Explicit Statistic Names"),
-        help=_("Specify statistic names that the rule should apply to"),
-    )
+from cmk.gui.valuespec import Dictionary
 
 
 def _parameter_valuespec_stats() -> Dictionary:
     return Dictionary(
-        title=_("Set Levels"),
         elements=[
             (
-                "levels",
-                Tuple(
-                    title=_("Maximum Value"),
-                    elements=[
-                        Integer(title=_("Warning at")),
-                        Integer(title=_("Critical at")),
-                    ],
+                "levels_nsstats.Requestv4",
+                Levels(
+                    title=_("Maximum Rate of IPv4 requests"),
+                    default_value=None,
+                    default_levels=(100000, 200000),
+                    unit="req/sec",
+                ),
+            ),
+            (
+                "levels_nsstats.Requestv6",
+                Levels(
+                    title=_("Maximum Rate of IPv6 requests"),
+                    default_value=None,
+                    default_levels=(100000, 200000),
+                    unit="req/sec",
                 ),
             ),
         ],
-        required_keys=["levels"],
     )
 
-
 rulespec_registry.register(
-    CheckParameterRulespecWithItem(
+    CheckParameterRulespecWithoutItem(
         check_group_name="isc_bind_stats",
         group=RulespecGroupCheckParametersApplications,
-        item_spec=_item_spec_stats,
         parameter_valuespec=_parameter_valuespec_stats,
         title=lambda: _("ISC Bind Statistics"),
     )
