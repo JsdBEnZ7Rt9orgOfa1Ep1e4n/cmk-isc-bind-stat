@@ -3,10 +3,9 @@
 # This file is part of Checkmk (https://checkmk.com). It is subject to the terms and
 # conditions defined in the file COPYING, which is part of this source code package.
 from collections import defaultdict
-import time
 from typing import Any, Iterable, Iterator, Mapping, NamedTuple, Optional, Sequence
 
-from .agent_based_api.v1 import check_levels, get_rate, get_value_store, regex, register, render, Result, Service, State
+from .agent_based_api.v1 import check_levels, get_rate, get_value_store, register, Result, Service, State
 from .agent_based_api.v1.type_defs import CheckResult, DiscoveryResult, StringTable
 
 Section = Mapping[str, Any]
@@ -22,9 +21,6 @@ Section = Mapping[str, Any]
 # opcodes.IQUERY 0
 # …
 
-
-#def _parse_server(source: Iterator[Sequence[str]]) -> Mapping[str, Any]:
-#	return dict(source)
 
 def parse(string_table: StringTable) -> Optional[Section]:
     if not string_table:
@@ -48,33 +44,35 @@ VARNAME=(
 )
 
 def discovery_stat(section: Section) -> DiscoveryResult:
+    for k in ('current-timestamp', 'boot-time'):
+        if k not in section:
+            return
     for k in VARNAME:
         if k in section:
             yield Service()
             return
 
 def check_stat(params: Mapping[str, Any], section: Section) -> CheckResult:
+    if 'boot-time' not in section or 'current-timestamp' not in section:
+        yield Result(state=State.UNKNOWN, summary="missing data")
+        return
     store = get_value_store()
     if 'boot-time' not in store or store['boot-time'] != section['boot-time']:
         store.clear()
         store['boot-time'] = section['boot-time']
+    ts = float(section['current-timestamp'])
     for k in VARNAME:
         if k not in section:
             continue
-        v = section[k]
-        try:
-            v_int = int(v)
-        except:
-            yield Result(state=State.OK, summary=f"{v}")
-        else:
-            rate = get_rate(store, k, time.time(), v_int)
-            yield from check_levels(
-                rate,
-                levels_upper=params.get("levels_"+k),
-                metric_name=k,
-                render_func=lambda v: f"{v:.1f}/s",
-                label=k,
-            )
+        v = int(section[k])
+        rate = get_rate(store, k, ts, v)
+        yield from check_levels(
+            rate,
+            levels_upper=params.get("levels_"+k),
+            metric_name=k,
+            render_func=lambda v: f"{v:.1f}/s",
+            label=k,
+        )
 
 _DEFAULT_LEVELS = (100000, 200000)
 
