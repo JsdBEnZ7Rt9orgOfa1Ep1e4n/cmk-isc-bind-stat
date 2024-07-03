@@ -32,7 +32,8 @@ def parse(string_table: StringTable) -> Optional[Section]:
         if line[0] in all_sections:
             section = line[0][1:-1]
         else:
-            sections[section].append(line)
+            if len(line) == 2:  # Vérifier la longueur de l'élément avant de l'ajouter
+                sections[section].append(line)
     return dict(iter(sections["server"]))
 
 register.agent_section(name="isc_bind_stats", parse_function=parse)
