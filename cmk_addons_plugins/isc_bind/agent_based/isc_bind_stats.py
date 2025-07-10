@@ -2,11 +2,23 @@
 # Copyright (C) 2022 Checkmk GmbH - License: GNU General Public License v2
 # This file is part of Checkmk (https://checkmk.com). It is subject to the terms and
 # conditions defined in the file COPYING, which is part of this source code package.
-from collections import defaultdict
-from typing import Any, Iterable, Iterator, Mapping, NamedTuple, Optional, Sequence
 
-from .agent_based_api.v1 import check_levels, get_rate, get_value_store, register, Result, Service, State
-from .agent_based_api.v1.type_defs import CheckResult, DiscoveryResult, StringTable
+from collections import defaultdict
+from typing import Any, Mapping, Optional
+
+from cmk.agent_based.v2 import ( 
+    AgentSection,
+    CheckPlugin, 
+    CheckResult, 
+    check_levels,
+    DiscoveryResult, 
+    get_value_store,
+    Result, 
+    Service, 
+    State, 
+    StringTable,
+    get_rate,
+)
 
 Section = Mapping[str, Any]
 
@@ -35,7 +47,11 @@ def parse(string_table: StringTable) -> Optional[Section]:
             sections[section].append(line)
     return dict(iter(sections["server"]))
 
-register.agent_section(name="isc_bind_stats", parse_function=parse)
+
+agent_section_isc_bind_stats = AgentSection(
+    name="isc_bind_stats",
+    parse_function=parse,
+)
 
 
 VARNAME=(
@@ -68,23 +84,23 @@ def check_stat(params: Mapping[str, Any], section: Section) -> CheckResult:
         rate = get_rate(store, k, ts, v)
         yield from check_levels(
             rate,
-            levels_upper=params.get("levels_"+k),
+            levels_upper=params.get("levels_"+k.removeprefix("nsstats.")),
             metric_name=k,
             render_func=lambda v: f"{v:.1f}/s",
             label=k,
         )
 
-_DEFAULT_LEVELS = (100000, 200000)
+_DEFAULT_LEVELS = ("fixed", (100000, 200000))
 
-register.check_plugin(
+check_plugin_isc_bind_stats = CheckPlugin( 
     name="isc_bind_stats",
     sections=["isc_bind_stats"],
     service_name="ISC Bind rate",
-    check_ruleset_name="isc_bind_stats",
+    check_ruleset_name="param_isc_bind_stats",
     discovery_function=discovery_stat,
     check_function=check_stat,
     check_default_parameters={
-            "levels_nsstats.Requestv4": _DEFAULT_LEVELS,
-            "levels_nsstats.Requestv6": _DEFAULT_LEVELS,
+            "levels_Requestv4": _DEFAULT_LEVELS,
+            "levels_Requestv6": _DEFAULT_LEVELS,
         },
 )
