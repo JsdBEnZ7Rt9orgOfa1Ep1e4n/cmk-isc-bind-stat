@@ -45,7 +45,8 @@ def parse(string_table: StringTable) -> Optional[Section]:
             section = line[0][1:-1]
         else:
             sections[section].append(line)
-    return dict(iter(sections["server"]))
+    # Ici, on ne garde que les lignes à 2 éléments pour les transformer en dict
+    return dict((l[0], l[1]) for l in sections["server"] if len(l) == 2)
 
 
 agent_section_isc_bind_stats = AgentSection(
